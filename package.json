@@ -2,6 +2,7 @@
   "name": "museum-collection-manager",
   "version": "1.0.1",
   "description": "Museum Collection Manager Desktop Application",
+  "author": "TomAustin94",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
