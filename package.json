@@ -2,7 +2,10 @@
   "name": "museum-collection-manager",
   "version": "1.0.3",
   "description": "Museum Collection Manager Desktop Application",
-  "author": "TomAustin94",
+  "author": {
+    "name": "TomAustin94",
+    "email": "tomaustin94@users.noreply.github.com"
+  },
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
