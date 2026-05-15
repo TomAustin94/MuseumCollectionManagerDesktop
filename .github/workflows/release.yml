@@ -51,10 +51,14 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux
+            # Explicitly list targets so electron-builder v24 doesn't add snap
+            targets: AppImage deb
           - os: windows-latest
             platform: win
+            targets: ''
           - os: macos-latest
             platform: mac
+            targets: ''
 
     runs-on: ${{ matrix.os }}
 
@@ -74,7 +78,6 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev rpm
 
-      # Cache the Electron binary (~100 MB) to avoid re-downloading every run
       - name: Cache Electron
         uses: actions/cache@v4
         with:
@@ -91,11 +94,11 @@ jobs:
         run: npm run build
 
       - name: Package & publish
-        run: npx electron-builder --${{ matrix.platform }} --publish always
+        # Targets are explicit for Linux; empty string is fine for mac/win (uses config)
+        run: npx electron-builder --${{ matrix.platform }} ${{ matrix.targets }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Disable cert auto-discovery — do NOT pass CSC_LINK or WIN_CSC_LINK unless
+          # you have actual signing certs; an empty secret resolves to "" which
+          # electron-builder treats as a cert path pointing to the working directory.
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
