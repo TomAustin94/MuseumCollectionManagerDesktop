@@ -2,15 +2,50 @@ name: Build & Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
+  version:
+    name: Bump version & tag
+    runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.bump.outputs.new_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Use a PAT if you have branch protection on main, otherwise GITHUB_TOKEN is fine
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          NEW_TAG=$(npm version patch -m "chore: release %s [skip ci]")
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      - name: Push version bump and tag
+        run: |
+          git push origin main
+          git push origin --tags
+
   build:
-    name: Build (${{ matrix.os }})
+    name: Build (${{ matrix.platform }})
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -25,8 +60,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout
+      - name: Checkout tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.new_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -34,7 +71,6 @@ jobs:
           node-version: 20
           cache: npm
 
-      # keytar requires libsecret on Linux
       - name: Install Linux system dependencies
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev rpm
@@ -42,14 +78,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build renderer + main
+      - name: Build
         run: npm run build
 
-      - name: Package & publish release
+      - name: Package & publish
         run: npx electron-builder --${{ matrix.platform }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Skip code signing unless certs are configured
           CSC_IDENTITY_AUTO_DISCOVERY: false
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
