@@ -1,0 +1,12 @@
+{
+  "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
+  "include": ["electron/**/*", "electron-builder.config.cjs"],
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "out/main",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["electron/*"]
+    }
+  }
+}
