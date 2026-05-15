@@ -1,0 +1,289 @@
+import { app, BrowserWindow, Menu, MenuItem, ipcMain, shell, dialog } from 'electron'
+import path from 'path'
+import fs from 'fs'
+import { runMigrations } from './db/migrate'
+import { closeDb, getDb } from './db/client'
+import { cleanupExpiredSessions } from './auth/session'
+import { registerAuthHandlers } from './ipc/auth'
+import { registerItemsHandlers } from './ipc/items'
+import { registerCategoriesHandlers } from './ipc/categories'
+import { registerLocationsHandlers } from './ipc/locations'
+import { registerReportsHandlers } from './ipc/reports'
+import { registerExportHandlers } from './ipc/export'
+import { registerAdminHandlers } from './ipc/admin'
+import { setupAutoUpdater } from './updater'
+
+let mainWindow: BrowserWindow | null = null
+
+function createWindow(): void {
+  mainWindow = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    minWidth: 900,
+    minHeight: 600,
+    show: false,
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      preload: path.join(__dirname, 'preload.js')
+    }
+  })
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show()
+  })
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url)
+    return { action: 'deny' }
+  })
+
+  if (process.env.ELECTRON_RENDERER_URL) {
+    mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
+  }
+
+  // Open devtools in development
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools()
+  }
+}
+
+function buildMenu(): void {
+  const isMac = process.platform === 'darwin'
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac
+      ? [
+          {
+            label: app.getName(),
+            submenu: [
+              { role: 'about' as const },
+              { type: 'separator' as const },
+              { role: 'services' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const }
+            ]
+          }
+        ]
+      : []),
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Item',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => {
+            mainWindow?.webContents.send('navigate', '/items/new')
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Export to CSV...',
+          accelerator: 'CmdOrCtrl+E',
+          click: () => {
+            mainWindow?.webContents.send('export-csv')
+          }
+        },
+        { type: 'separator' },
+        isMac ? { role: 'close' as const } : { role: 'quit' as const }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' as const },
+        { role: 'redo' as const },
+        { type: 'separator' as const },
+        { role: 'cut' as const },
+        { role: 'copy' as const },
+        { role: 'paste' as const },
+        ...(isMac
+          ? [
+              { role: 'pasteAndMatchStyle' as const },
+              { role: 'delete' as const },
+              { role: 'selectAll' as const },
+              { type: 'separator' as const },
+              {
+                label: 'Speech',
+                submenu: [
+                  { role: 'startSpeaking' as const },
+                  { role: 'stopSpeaking' as const }
+                ]
+              }
+            ]
+          : [{ role: 'delete' as const }, { type: 'separator' as const }, { role: 'selectAll' as const }])
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Dashboard',
+          accelerator: 'CmdOrCtrl+1',
+          click: () => mainWindow?.webContents.send('navigate', '/')
+        },
+        {
+          label: 'Items',
+          accelerator: 'CmdOrCtrl+2',
+          click: () => mainWindow?.webContents.send('navigate', '/items')
+        },
+        {
+          label: 'Categories',
+          accelerator: 'CmdOrCtrl+3',
+          click: () => mainWindow?.webContents.send('navigate', '/categories')
+        },
+        {
+          label: 'Locations',
+          accelerator: 'CmdOrCtrl+4',
+          click: () => mainWindow?.webContents.send('navigate', '/locations')
+        },
+        {
+          label: 'Reports',
+          accelerator: 'CmdOrCtrl+5',
+          click: () => mainWindow?.webContents.send('navigate', '/reports')
+        },
+        { type: 'separator' },
+        { role: 'reload' as const },
+        { role: 'forceReload' as const },
+        { role: 'toggleDevTools' as const },
+        { type: 'separator' as const },
+        { role: 'resetZoom' as const },
+        { role: 'zoomIn' as const },
+        { role: 'zoomOut' as const },
+        { type: 'separator' as const },
+        { role: 'togglefullscreen' as const }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About Museum Collection Manager',
+          click: () => {
+            dialog.showMessageBox(mainWindow!, {
+              type: 'info',
+              title: 'About Museum Collection Manager',
+              message: 'Museum Collection Manager',
+              detail: `Version ${app.getVersion()}\n\nA desktop application for managing museum collections.`
+            })
+          }
+        },
+        {
+          label: 'Check for Updates',
+          click: () => {
+            mainWindow?.webContents.send('check-for-updates')
+          }
+        }
+      ]
+    }
+  ]
+
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+}
+
+function scheduleDailyBackup(): void {
+  // Run backup check every hour
+  const HOUR = 60 * 60 * 1000
+  setInterval(() => {
+    const lastBackupFile = path.join(app.getPath('userData'), '.last-backup')
+    let shouldBackup = true
+
+    if (fs.existsSync(lastBackupFile)) {
+      const lastBackup = new Date(fs.readFileSync(lastBackupFile, 'utf-8'))
+      const now = new Date()
+      const hoursSinceBackup = (now.getTime() - lastBackup.getTime()) / HOUR
+      if (hoursSinceBackup < 24) {
+        shouldBackup = false
+      }
+    }
+
+    if (shouldBackup) {
+      performBackup()
+    }
+  }, HOUR)
+}
+
+function performBackup(): void {
+  try {
+    const userData = app.getPath('userData')
+    const dbPath = path.join(userData, 'collection.db')
+    const backupDir = path.join(userData, 'backups')
+
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true })
+    }
+
+    // Keep only last 7 backups
+    const backups = fs.readdirSync(backupDir).sort().reverse()
+    if (backups.length >= 7) {
+      backups.slice(6).forEach((b) => fs.unlinkSync(path.join(backupDir, b)))
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const backupPath = path.join(backupDir, `collection-${timestamp}.db`)
+
+    const db = getDb()
+    db.backup(backupPath)
+
+    const lastBackupFile = path.join(userData, '.last-backup')
+    fs.writeFileSync(lastBackupFile, new Date().toISOString())
+
+    console.log(`Database backed up to ${backupPath}`)
+  } catch (err) {
+    console.error('Backup failed:', err)
+  }
+}
+
+// Expose backup function for IPC
+ipcMain.handle('db:backup', async () => {
+  performBackup()
+  return { success: true }
+})
+
+app.whenReady().then(() => {
+  // Initialize database
+  runMigrations()
+
+  // Clean up expired sessions
+  cleanupExpiredSessions()
+
+  // Register all IPC handlers
+  registerAuthHandlers()
+  registerItemsHandlers()
+  registerCategoriesHandlers()
+  registerLocationsHandlers()
+  registerReportsHandlers()
+  registerExportHandlers()
+  registerAdminHandlers()
+
+  createWindow()
+  buildMenu()
+  setupAutoUpdater(mainWindow!)
+  scheduleDailyBackup()
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+    }
+  })
+})
+
+app.on('window-all-closed', () => {
+  closeDb()
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
+})
+
+app.on('before-quit', () => {
+  closeDb()
+})
