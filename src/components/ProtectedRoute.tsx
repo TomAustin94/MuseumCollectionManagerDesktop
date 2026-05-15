@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { Building2 } from 'lucide-react'
 import type { User } from '../types/electron'
 
 interface ProtectedRouteProps {
@@ -7,54 +8,69 @@ interface ProtectedRouteProps {
   requireRole?: 'admin' | 'editor' | 'viewer'
 }
 
+type AuthState =
+  | { status: 'loading' }
+  | { status: 'first-run' }
+  | { status: 'unauthenticated' }
+  | { status: 'authenticated'; user: User }
+
 export default function ProtectedRoute({ children, requireRole }: ProtectedRouteProps) {
-  const [user, setUser] = useState<User | null | undefined>(undefined)
-  const [isFirstRun, setIsFirstRun] = useState<boolean | null>(null)
+  const [auth, setAuth] = useState<AuthState>({ status: 'loading' })
   const location = useLocation()
 
   useEffect(() => {
+    let cancelled = false
+
     async function check() {
       try {
         const firstRun = await window.api.setup.isFirstRun()
-        setIsFirstRun(firstRun)
-        if (!firstRun) {
-          const session = await window.api.auth.getSession()
-          setUser(session)
+        if (cancelled) return
+
+        if (firstRun) {
+          setAuth({ status: 'first-run' })
+          return
+        }
+
+        const session = await window.api.auth.getSession()
+        if (cancelled) return
+
+        if (session) {
+          setAuth({ status: 'authenticated', user: session })
+        } else {
+          setAuth({ status: 'unauthenticated' })
         }
       } catch {
-        setUser(null)
-        setIsFirstRun(false)
+        if (!cancelled) setAuth({ status: 'unauthenticated' })
       }
     }
+
     check()
+    return () => { cancelled = true }
   }, [location.pathname])
 
-  // Still loading
-  if (user === undefined || isFirstRun === null) {
+  if (auth.status === 'loading') {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+      <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-gray-900 to-gray-800 gap-4">
+        <div className="p-4 rounded-full bg-amber-100/10">
+          <Building2 className="h-10 w-10 text-amber-400" />
+        </div>
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-amber-400 border-t-transparent" />
+        <p className="text-gray-400 text-sm">Loading Museum Collection Manager…</p>
       </div>
     )
   }
 
-  // First run - redirect to setup
-  if (isFirstRun) {
+  if (auth.status === 'first-run') {
     return <Navigate to="/setup" replace />
   }
 
-  // Not authenticated
-  if (!user) {
+  if (auth.status === 'unauthenticated') {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  // Role check
   if (requireRole) {
-    const roleHierarchy = { admin: 3, editor: 2, viewer: 1 }
-    const userLevel = roleHierarchy[user.role] || 0
-    const requiredLevel = roleHierarchy[requireRole] || 0
-
-    if (userLevel < requiredLevel) {
+    const hierarchy = { admin: 3, editor: 2, viewer: 1 }
+    if ((hierarchy[auth.user.role as keyof typeof hierarchy] ?? 0) < (hierarchy[requireRole] ?? 0)) {
       return (
         <div className="flex items-center justify-center h-full">
           <div className="text-center">

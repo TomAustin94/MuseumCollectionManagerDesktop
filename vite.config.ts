@@ -4,7 +4,6 @@ import { resolve } from 'path'
 
 const nodeExternals = [
   'better-sqlite3',
-  'keytar',
   'electron-updater',
   'uuid',
   'bcryptjs',

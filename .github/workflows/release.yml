@@ -76,7 +76,7 @@ jobs:
 
       - name: Install Linux system dependencies
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev rpm
+        run: sudo apt-get update && sudo apt-get install -y rpm
 
       - name: Cache Electron
         uses: actions/cache@v4

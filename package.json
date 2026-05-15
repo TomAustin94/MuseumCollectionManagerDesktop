@@ -34,7 +34,6 @@
     "clsx": "^2.1.0",
     "csv-stringify": "^6.4.6",
     "electron-updater": "^6.1.8",
-    "keytar": "^7.9.0",
     "lucide-react": "^0.363.0",
     "qrcode": "^1.5.3",
     "react": "^18.2.0",

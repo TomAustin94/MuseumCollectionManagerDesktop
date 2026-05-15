@@ -15,7 +15,6 @@ const config = {
   // Native modules (.node files) cannot be loaded from inside an asar archive
   asarUnpack: [
     'node_modules/better-sqlite3/**',
-    'node_modules/keytar/**',
     '**/*.node'
   ],
   mac: {
