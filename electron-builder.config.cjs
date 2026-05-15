@@ -42,8 +42,8 @@ const config = {
   },
   publish: {
     provider: 'github',
-    owner: 'museum',
-    repo: 'collection-manager'
+    owner: 'TomAustin94',
+    repo: 'MuseumCollectionManagerDesktop'
   }
 }
 
