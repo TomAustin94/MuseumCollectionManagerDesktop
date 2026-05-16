@@ -236,6 +236,16 @@ declare global {
           serverAddress?: string
         }) => Promise<{ success: boolean }>
         getLocalIps: () => Promise<string[]>
+        getBackupInfo: () => Promise<{
+          lastBackupTime: string | null
+          backupDir: string | null
+          backupScheduleHour: number
+          backupRetention: number
+        }>
+        setBackupSchedule: (data: {
+          backupScheduleHour?: number
+          backupRetention?: number
+        }) => Promise<{ success: boolean }>
       }
       onNavigate: (callback: (path: string) => void) => void
       updater: {

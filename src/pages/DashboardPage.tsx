@@ -11,10 +11,12 @@ import {
   Pie,
   Cell
 } from 'recharts'
-import { Package, MapPin, Tag, TrendingUp } from 'lucide-react'
+import { Package, MapPin, Tag, TrendingUp, HardDrive, CheckCircle, AlertCircle, Clock } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency, formatDateTime, getStatusColor, getConditionColor } from '@/lib/utils'
+import { formatCurrency, formatDateTime, getStatusColor } from '@/lib/utils'
+import { toast } from 'sonner'
+import type { User } from '../types/electron'
 
 const STATUS_COLORS: Record<string, string> = {
   display: '#10b981',
@@ -33,8 +35,16 @@ const CONDITION_COLORS: Record<string, string> = {
   unknown: '#9ca3af'
 }
 
+interface BackupInfo {
+  lastBackupTime: string | null
+  backupDir: string | null
+  backupScheduleHour: number
+  backupRetention: number
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const [user, setUser] = useState<User | null>(null)
   const [overview, setOverview] = useState<{
     totalItems: number
     totalValue: number
@@ -57,15 +67,34 @@ export default function DashboardPage() {
       changed_at: string
     }>
   } | null>(null)
+  const [backupInfo, setBackupInfo] = useState<BackupInfo | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    window.api.reports
-      .overview()
-      .then(setOverview)
+    window.api.auth.getSession().then(setUser).catch(() => null)
+
+    Promise.all([
+      window.api.reports.overview(),
+      window.api.settings.getBackupInfo().catch(() => null)
+    ])
+      .then(([ov, bi]) => {
+        setOverview(ov)
+        setBackupInfo(bi)
+      })
       .catch(() => toast.error('Failed to load dashboard'))
       .finally(() => setLoading(false))
   }, [])
+
+  const formatScheduleHour = (h: number) => {
+    const ampm = h < 12 ? 'AM' : 'PM'
+    const display = h % 12 === 0 ? 12 : h % 12
+    return `${display}:00 ${ampm}`
+  }
+
+  const isBackupRecent = (isoStr: string | null): boolean => {
+    if (!isoStr) return false
+    return Date.now() - new Date(isoStr).getTime() < 25 * 60 * 60 * 1000
+  }
 
   if (loading) {
     return (
@@ -145,6 +174,73 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Backup Status */}
+      {backupInfo && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <HardDrive className="h-5 w-5 text-amber-600" />
+                <CardTitle className="text-base">Backup Status</CardTitle>
+              </div>
+              {user?.role === 'admin' && (
+                <button
+                  onClick={() => navigate('/settings')}
+                  className="text-xs text-amber-600 hover:text-amber-700 underline"
+                >
+                  Change settings
+                </button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="flex items-start gap-2">
+                {isBackupRecent(backupInfo.lastBackupTime) ? (
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                )}
+                <div>
+                  <p className="text-xs text-muted-foreground">Last backup</p>
+                  <p className="text-sm font-medium">
+                    {backupInfo.lastBackupTime
+                      ? new Date(backupInfo.lastBackupTime).toLocaleString()
+                      : 'Never'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2">
+                <Clock className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Daily at</p>
+                  <p className="text-sm font-medium">{formatScheduleHour(backupInfo.backupScheduleHour)}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2">
+                <HardDrive className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Retention</p>
+                  <p className="text-sm font-medium">Last {backupInfo.backupRetention} backups</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2">
+                <div className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Location</p>
+                  <p className="text-sm font-medium truncate font-mono">
+                    {backupInfo.backupDir ?? 'Default'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

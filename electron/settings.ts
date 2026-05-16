@@ -7,13 +7,17 @@ export interface AppSettings {
   networkMode: 'standalone' | 'server' | 'client'
   serverPort: number
   serverAddress: string
+  backupScheduleHour: number
+  backupRetention: number
 }
 
 const defaults: AppSettings = {
   backupDir: null,
   networkMode: 'standalone',
   serverPort: 4567,
-  serverAddress: ''
+  serverAddress: '',
+  backupScheduleHour: 2,
+  backupRetention: 7
 }
 
 function settingsPath(): string {

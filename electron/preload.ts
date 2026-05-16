@@ -93,7 +93,10 @@ const api = {
     chooseBackupDir: () => ipcRenderer.invoke('settings:choose-backup-dir'),
     getNetwork: () => ipcRenderer.invoke('settings:get-network'),
     setNetwork: (data: Record<string, unknown>) => ipcRenderer.invoke('settings:set-network', data),
-    getLocalIps: () => ipcRenderer.invoke('settings:get-local-ips')
+    getLocalIps: () => ipcRenderer.invoke('settings:get-local-ips'),
+    getBackupInfo: () => ipcRenderer.invoke('settings:get-backup-info'),
+    setBackupSchedule: (data: Record<string, unknown>) =>
+      ipcRenderer.invoke('settings:set-backup-schedule', data)
   },
   onNavigate: (callback: (path: string) => void) => {
     ipcRenderer.on('navigate', (_event, path) => callback(path))
