@@ -22,8 +22,7 @@ const navItems = [
   { path: '/items', label: 'Items', icon: Package },
   { path: '/categories', label: 'Categories', icon: Tag },
   { path: '/locations', label: 'Locations', icon: MapPin },
-  { path: '/reports', label: 'Reports', icon: BarChart3 },
-  { path: '/settings', label: 'Settings', icon: Settings }
+  { path: '/reports', label: 'Reports', icon: BarChart3 }
 ]
 
 interface SidebarProps {
@@ -101,24 +100,42 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </NavLink>
         ))}
 
-        {/* Admin-only link */}
+        {/* Admin-only links */}
         {user?.role === 'admin' && (
-          <NavLink
-            to="/admin"
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors',
-                isActive
-                  ? 'bg-amber-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white',
-                collapsed && 'justify-center'
-              )
-            }
-            title={collapsed ? 'Admin' : undefined}
-          >
-            <Shield className="h-5 w-5 flex-shrink-0" />
-            {!collapsed && <span>Admin</span>}
-          </NavLink>
+          <>
+            <NavLink
+              to="/settings"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors',
+                  isActive
+                    ? 'bg-amber-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white',
+                  collapsed && 'justify-center'
+                )
+              }
+              title={collapsed ? 'Settings' : undefined}
+            >
+              <Settings className="h-5 w-5 flex-shrink-0" />
+              {!collapsed && <span>Settings</span>}
+            </NavLink>
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors',
+                  isActive
+                    ? 'bg-amber-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white',
+                  collapsed && 'justify-center'
+                )
+              }
+              title={collapsed ? 'Admin' : undefined}
+            >
+              <Shield className="h-5 w-5 flex-shrink-0" />
+              {!collapsed && <span>Admin</span>}
+            </NavLink>
+          </>
         )}
       </nav>
 

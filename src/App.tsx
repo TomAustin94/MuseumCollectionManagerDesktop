@@ -54,7 +54,14 @@ function App() {
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="locations" element={<LocationsPage />} />
           <Route path="reports" element={<ReportsPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          <Route
+            path="settings"
+            element={
+              <ProtectedRoute requireRole="admin">
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="admin"
             element={

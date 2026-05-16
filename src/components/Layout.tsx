@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { Plus, Download } from 'lucide-react'
 import { toast } from 'sonner'
@@ -7,7 +7,14 @@ import { Button } from './ui/button'
 
 export default function Layout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [role, setRole] = useState<string | null>(null)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    window.api.auth.getSession().then((u) => setRole(u?.role ?? null)).catch(() => null)
+  }, [])
+
+  const canEdit = role === 'admin' || role === 'editor'
 
   const handleExport = async () => {
     try {
@@ -40,14 +47,16 @@ export default function Layout() {
             <Download className="h-3.5 w-3.5" />
             Export CSV
           </Button>
-          <Button
-            size="sm"
-            onClick={() => navigate('/items/new')}
-            className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New Item
-          </Button>
+          {canEdit && (
+            <Button
+              size="sm"
+              onClick={() => navigate('/items/new')}
+              className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New Item
+            </Button>
+          )}
         </header>
 
         <main className="flex-1 overflow-auto">
