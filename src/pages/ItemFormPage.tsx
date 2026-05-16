@@ -44,10 +44,12 @@ export default function ItemFormPage() {
   const [loading, setLoading] = useState(false)
   const [loadingItem, setLoadingItem] = useState(isEdit)
   const [error, setError] = useState<string | null>(null)
+  const [isConflict, setIsConflict] = useState(false)
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [imagePaths, setImagePaths] = useState<string[]>([])
   const [savedItemId, setSavedItemId] = useState<number | null>(isEdit ? Number(id) : null)
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null)
 
   const {
     register,
@@ -85,6 +87,7 @@ export default function ItemFormPage() {
         })
         setTags(item.tags || [])
         setImagePaths(item.imagePaths || [])
+        setUpdatedAt(item.updated_at)
       })
       .catch(() => toast.error('Failed to load item'))
       .finally(() => setLoadingItem(false))
@@ -93,6 +96,7 @@ export default function ItemFormPage() {
   const onSubmit = async (data: ItemForm) => {
     setLoading(true)
     setError(null)
+    setIsConflict(false)
 
     const payload = {
       accessionNumber: data.accessionNumber,
@@ -109,7 +113,8 @@ export default function ItemFormPage() {
       provenance: data.provenance || null,
       notes: data.notes || null,
       tags,
-      imagePaths
+      imagePaths,
+      ...(isEdit && updatedAt ? { updatedAt } : {})
     }
 
     try {
@@ -124,7 +129,13 @@ export default function ItemFormPage() {
         navigate(`/items/${result.id}`)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save item')
+      const msg = err instanceof Error ? err.message : 'Failed to save item'
+      if (msg.startsWith('CONFLICT:')) {
+        setIsConflict(true)
+        setError(msg.replace('CONFLICT: ', ''))
+      } else {
+        setError(msg)
+      }
     } finally {
       setLoading(false)
     }
@@ -183,7 +194,19 @@ export default function ItemFormPage() {
 
       {error && (
         <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>{error}</span>
+            {isConflict && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 border-red-300 text-red-700 hover:bg-red-50"
+                onClick={() => navigate(0)}
+              >
+                Reload
+              </Button>
+            )}
+          </AlertDescription>
         </Alert>
       )}
 

@@ -23,7 +23,9 @@ const ItemCreateSchema = z.object({
   tags: z.array(z.string()).default([])
 })
 
-const ItemUpdateSchema = ItemCreateSchema.partial()
+const ItemUpdateSchema = ItemCreateSchema.partial().extend({
+  updatedAt: z.string().optional()
+})
 
 const ItemListSchema = z.object({
   page: z.number().int().min(1).default(1),
@@ -203,6 +205,11 @@ export function registerItemsHandlers(): void {
 
     const existing = db.prepare('SELECT * FROM items WHERE id = ?').get(itemId) as Record<string, unknown> | undefined
     if (!existing) throw new Error('Item not found')
+
+    // Optimistic concurrency check
+    if (parsed.updatedAt && existing.updated_at !== parsed.updatedAt) {
+      throw new Error('CONFLICT: This item was modified by someone else since you opened it. Reload the page to see the latest version.')
+    }
 
     // Check for duplicate accession number if changing it
     if (parsed.accessionNumber && parsed.accessionNumber !== existing.accession_number) {

@@ -90,7 +90,9 @@ const ItemCreateSchema = z.object({
   tags: z.array(z.string()).default([])
 })
 
-const ItemUpdateSchema = ItemCreateSchema.partial()
+const ItemUpdateSchema = ItemCreateSchema.partial().extend({
+  updatedAt: z.string().optional()
+})
 
 const MoveSchema = z.object({
   locationId: z.number().int().positive().optional().nullable(),
@@ -276,6 +278,9 @@ const rpcHandlers: Record<string, RpcHandler> = {
       .prepare('SELECT * FROM items WHERE id = ?')
       .get(itemId) as Record<string, unknown> | undefined
     if (!existing) throw new Error('Item not found')
+    if (parsed.updatedAt && existing.updated_at !== parsed.updatedAt) {
+      throw new Error('CONFLICT: This item was modified by someone else since you opened it. Reload the page to see the latest version.')
+    }
     if (parsed.accessionNumber && parsed.accessionNumber !== existing.accession_number) {
       const dup = db
         .prepare('SELECT id FROM items WHERE accession_number = ? AND id != ?')
