@@ -6,7 +6,7 @@ import {
   flexRender,
   createColumnHelper
 } from '@tanstack/react-table'
-import { Plus, Search, X, Eye, Pencil, Trash2, Filter } from 'lucide-react'
+import { Plus, Search, X, Eye, Pencil, Trash2, Filter, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
