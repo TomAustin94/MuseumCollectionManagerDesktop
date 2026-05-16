@@ -158,3 +158,9 @@ Every push to `main` triggers a three-stage GitHub Actions workflow:
 3. **publish** — marks the GitHub Release as public once all builds succeed
 
 Releases stay as drafts if any platform build fails.
+
+## Updates
+
+The app checks for updates automatically 10 seconds after launch. If an update is available it downloads in the background and shows a toast notification with a **Restart & install** button.
+
+To check manually: **Admin → Database → Check for Updates Now**, or use the Help menu.

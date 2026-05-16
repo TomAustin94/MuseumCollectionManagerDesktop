@@ -227,6 +227,11 @@ declare global {
         chooseBackupDir: () => Promise<{ cancelled: boolean; path: string | null }>
       }
       onNavigate: (callback: (path: string) => void) => void
+      updater: {
+        check: () => Promise<void>
+        install: () => void
+        onStatus: (callback: (payload: { status: string; version?: string; percent?: number; error?: string }) => void) => void
+      }
       log: {
         info: (msg: string) => void
         error: (msg: string) => void

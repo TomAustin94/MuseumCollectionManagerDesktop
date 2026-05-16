@@ -14,7 +14,7 @@ import { registerExportHandlers } from './ipc/export'
 import { registerAdminHandlers } from './ipc/admin'
 import { registerSettingsHandlers } from './ipc/settings'
 import { getSetting } from './settings'
-import { setupAutoUpdater } from './updater'
+import { setupAutoUpdater, triggerUpdateCheck } from './updater'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -183,9 +183,7 @@ function buildMenu(): void {
         },
         {
           label: 'Check for Updates',
-          click: () => {
-            mainWindow?.webContents.send('check-for-updates')
-          }
+          click: () => triggerUpdateCheck()
         }
       ]
     }

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
@@ -21,11 +21,35 @@ function NavigationListener() {
 
   useEffect(() => {
     if (window.api?.onNavigate) {
-      window.api.onNavigate((path) => {
-        navigate(path)
-      })
+      window.api.onNavigate((path) => navigate(path))
     }
   }, [navigate])
+
+  useEffect(() => {
+    if (!window.api?.updater?.onStatus) return
+    window.api.updater.onStatus((payload) => {
+      if (payload.status === 'checking') {
+        toast.loading('Checking for updates…', { id: 'updater' })
+      } else if (payload.status === 'available') {
+        toast.loading(`Update v${payload.version} available — downloading…`, { id: 'updater' })
+      } else if (payload.status === 'downloading') {
+        toast.loading(`Downloading update… ${payload.percent ?? 0}%`, { id: 'updater' })
+      } else if (payload.status === 'downloaded') {
+        toast.success(
+          `Update v${payload.version} ready`,
+          {
+            id: 'updater',
+            duration: Infinity,
+            action: { label: 'Restart & install', onClick: () => window.api.updater.install() }
+          }
+        )
+      } else if (payload.status === 'not-available') {
+        toast.success('You are on the latest version', { id: 'updater', duration: 3000 })
+      } else if (payload.status === 'error') {
+        toast.error(`Update error: ${payload.error}`, { id: 'updater' })
+      }
+    })
+  }, [])
 
   return null
 }

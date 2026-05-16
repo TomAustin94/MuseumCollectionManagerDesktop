@@ -95,6 +95,13 @@ const api = {
   onNavigate: (callback: (path: string) => void) => {
     ipcRenderer.on('navigate', (_event, path) => callback(path))
   },
+  updater: {
+    check: () => ipcRenderer.invoke('check-for-updates'),
+    install: () => ipcRenderer.invoke('install-update'),
+    onStatus: (callback: (payload: Record<string, unknown>) => void) => {
+      ipcRenderer.on('update-status', (_event, payload) => callback(payload))
+    }
+  },
   log: {
     info:  (msg: string) => ipcRenderer.send('log:renderer', 'RENDERER', msg),
     error: (msg: string) => ipcRenderer.send('log:renderer', 'RENDERER-ERROR', msg),

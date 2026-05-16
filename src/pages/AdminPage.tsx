@@ -15,7 +15,8 @@ import {
   Key,
   RefreshCw,
   FlaskConical,
-  Eraser
+  Eraser,
+  RefreshCcw
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -530,6 +531,25 @@ export default function AdminPage() {
                     Remove Demo Data
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <RefreshCcw className="h-4 w-4 text-blue-600" />
+                  Software Updates
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  The app checks for updates automatically on launch. You can also check manually at any time.
+                  If an update is available it will download in the background and prompt you to restart.
+                </p>
+                <Button variant="outline" onClick={() => window.api.updater.check()} className="flex items-center gap-2">
+                  <RefreshCcw className="h-4 w-4" />
+                  Check for Updates Now
+                </Button>
               </CardContent>
             </Card>
           </div>
