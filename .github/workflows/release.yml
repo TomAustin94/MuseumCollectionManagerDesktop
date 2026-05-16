@@ -102,3 +102,13 @@ jobs:
           # you have actual signing certs; an empty secret resolves to "" which
           # electron-builder treats as a cert path pointing to the working directory.
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
+  publish:
+    name: Publish release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark release as public
+        run: gh release edit ${{ needs.version.outputs.new_tag }} --draft=false --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
