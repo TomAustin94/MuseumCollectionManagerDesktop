@@ -38,21 +38,17 @@ export default function SettingsPage() {
   const [networkSaving, setNetworkSaving] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      window.api.settings.get(),
-      window.api.settings.getNetwork(),
-      window.api.settings.getLocalIps(),
-      window.api.settings.getBackupInfo()
-    ]).then(([s, n, ips, b]) => {
-      setBackupDir(s.backupDir)
+    window.api.settings.get().then((s) => setBackupDir(s.backupDir)).catch(() => null)
+    window.api.settings.getNetwork().then((n) => {
       setNetworkMode(n.networkMode)
       setServerPort(n.serverPort)
       setServerAddress(n.serverAddress)
-      setLocalIps(ips)
+    }).catch(() => null)
+    window.api.settings.getLocalIps().then(setLocalIps).catch(() => null)
+    window.api.settings.getBackupInfo().then((b) => {
       setScheduleHour(b.backupScheduleHour)
       setRetention(b.backupRetention)
-      setLoading(false)
-    })
+    }).catch(() => null).finally(() => setLoading(false))
   }, [])
 
   const handleChooseDir = async () => {
@@ -294,6 +290,7 @@ export default function SettingsPage() {
             </div>
             <CardDescription>
               Configure when automatic backups run and how many are kept.
+              The app must be running at the scheduled time for automatic backups to occur.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

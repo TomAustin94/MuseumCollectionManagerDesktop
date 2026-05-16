@@ -246,11 +246,16 @@ declare global {
           backupScheduleHour?: number
           backupRetention?: number
         }) => Promise<{ success: boolean }>
+        setServerAddress: (address: string) => Promise<{ success: boolean }>
+      }
+      backup: {
+        run: () => Promise<{ success: boolean }>
       }
       onNavigate: (callback: (path: string) => void) => void
       updater: {
         check: () => Promise<void>
         install: () => void
+        download: () => Promise<void>
         onStatus: (callback: (payload: { status: string; version?: string; percent?: number; error?: string }) => void) => void
       }
       log: {

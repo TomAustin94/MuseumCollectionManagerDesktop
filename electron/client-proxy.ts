@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { storeSessionToken, clearStoredToken, getStoredToken } from './auth/session'
-import { loadSettings } from './settings'
+import { loadSettings, saveSettings } from './settings'
 
 function getBaseUrl(): string {
   const { serverAddress } = loadSettings()
@@ -163,6 +163,10 @@ export function registerClientProxyHandlers(): void {
     throw new Error('Image upload is not available in client mode. Use the server PC to upload images.')
   })
 
+  ipcMain.handle('db:backup', async () => {
+    throw new Error('Database backup must be performed on the server PC.')
+  })
+
   ipcMain.handle('admin:database:backup', async () => {
     throw new Error('Database backup must be performed on the server PC.')
   })
@@ -173,5 +177,13 @@ export function registerClientProxyHandlers(): void {
 
   ipcMain.handle('export:csv', async () => {
     throw new Error('CSV export is not available in client mode. Use the server PC to export.')
+  })
+
+  // Local: set server address (used on pre-login connect page)
+  ipcMain.handle('settings:set-server-address', (_event, address: unknown) => {
+    const s = loadSettings()
+    s.serverAddress = String(address ?? '').trim()
+    saveSettings(s)
+    return { success: true }
   })
 }

@@ -111,4 +111,12 @@ export function registerSettingsHandlers(): void {
     saveSettings(s)
     return { success: true }
   })
+
+  // Allow setting server address before login (client mode host selection)
+  ipcMain.handle('settings:set-server-address', (_event, address: unknown) => {
+    const s = loadSettings()
+    s.serverAddress = String(address ?? '').trim()
+    saveSettings(s)
+    return { success: true }
+  })
 }

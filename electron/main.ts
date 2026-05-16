@@ -22,6 +22,35 @@ import { registerClientProxyHandlers } from './client-proxy'
 let mainWindow: BrowserWindow | null = null
 let apiServer: Server | null = null
 let isQuitting = false
+let cleanupDone = false
+
+async function showBackupPromptAndQuit(win: BrowserWindow | null): Promise<boolean> {
+  const lastBackupFile = path.join(app.getPath('userData'), '.last-backup')
+  let lastBackupText = 'Never'
+  if (fs.existsSync(lastBackupFile)) {
+    try {
+      lastBackupText = new Date(fs.readFileSync(lastBackupFile, 'utf-8')).toLocaleString()
+    } catch { /* ignore */ }
+  }
+
+  const opts: Electron.MessageBoxOptions = {
+    type: 'question',
+    title: 'Back up before closing?',
+    message: 'Would you like to back up the database before closing?',
+    detail: `Last backup: ${lastBackupText}`,
+    buttons: ['Back Up & Close', 'Close Without Backup', 'Cancel'],
+    defaultId: 0,
+    cancelId: 2
+  }
+
+  const { response } = win
+    ? await dialog.showMessageBox(win, opts)
+    : await dialog.showMessageBox(opts)
+
+  if (response === 2) return false
+  if (response === 0) await performBackup(true)
+  return true
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -43,6 +72,16 @@ function createWindow(): void {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show()
+  })
+
+  mainWindow.on('close', async (event) => {
+    if (isQuitting || getSetting('networkMode') === 'client') return
+    event.preventDefault()
+    const shouldQuit = await showBackupPromptAndQuit(mainWindow!)
+    if (shouldQuit) {
+      isQuitting = true
+      app.quit()
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -355,17 +394,14 @@ app.whenReady().then(() => {
 })
 
 function doCleanup(): void {
-  if (apiServer) {
-    apiServer.close()
-    apiServer = null
-  }
-  if (getSetting('networkMode') !== 'client') {
-    closeDb()
-  }
+  if (cleanupDone) return
+  cleanupDone = true
+  if (apiServer) { apiServer.close(); apiServer = null }
+  if (getSetting('networkMode') !== 'client') { closeDb() }
 }
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  if (!isQuitting && process.platform !== 'darwin') {
     app.quit()
   }
 })
@@ -375,40 +411,20 @@ app.on('before-quit', async (event) => {
     doCleanup()
     return
   }
-
-  // Only show prompt when this instance owns the database
   if (getSetting('networkMode') === 'client') {
+    doCleanup()
     return
   }
-
+  // Handles macOS Cmd+Q (fires before window 'close')
+  if (process.platform !== 'darwin') {
+    doCleanup()
+    return
+  }
   event.preventDefault()
-
-  const lastBackupFile = path.join(app.getPath('userData'), '.last-backup')
-  let lastBackupText = 'Never'
-  if (fs.existsSync(lastBackupFile)) {
-    try {
-      lastBackupText = new Date(fs.readFileSync(lastBackupFile, 'utf-8')).toLocaleString()
-    } catch {
-      // ignore
-    }
+  const win = BrowserWindow.getAllWindows()[0] ?? null
+  const shouldQuit = await showBackupPromptAndQuit(win)
+  if (shouldQuit) {
+    isQuitting = true
+    app.quit()
   }
-
-  const { response } = await dialog.showMessageBox({
-    type: 'question',
-    title: 'Back up before closing?',
-    message: 'Would you like to back up the database before closing?',
-    detail: `Last backup: ${lastBackupText}`,
-    buttons: ['Back Up & Close', 'Close Without Backup', 'Cancel'],
-    defaultId: 0,
-    cancelId: 2
-  })
-
-  if (response === 2) return // user cancelled — do not quit
-
-  if (response === 0) {
-    await performBackup(true)
-  }
-
-  isQuitting = true
-  app.quit()
 })
