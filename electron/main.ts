@@ -25,6 +25,8 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 600,
     show: false,
+    // Hide the native menu bar on Win/Linux; keep macOS system menu bar
+    autoHideMenuBar: process.platform !== 'darwin',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       nodeIntegration: false,
