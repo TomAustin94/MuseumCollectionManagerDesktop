@@ -14,6 +14,7 @@ import CategoriesPage from './pages/CategoriesPage'
 import LocationsPage from './pages/LocationsPage'
 import ReportsPage from './pages/ReportsPage'
 import AdminPage from './pages/AdminPage'
+import SettingsPage from './pages/SettingsPage'
 
 function NavigationListener() {
   const navigate = useNavigate()
@@ -54,6 +55,7 @@ function App() {
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="locations" element={<LocationsPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route
             path="admin"
             element={

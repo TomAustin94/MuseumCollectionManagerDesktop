@@ -217,6 +217,11 @@ declare global {
         isFirstRun: () => Promise<boolean>
         createAdmin: (data: Record<string, unknown>) => Promise<{ success: boolean; userId: number }>
       }
+      settings: {
+        get: () => Promise<{ backupDir: string | null }>
+        setBackupDir: (dir: string | null) => Promise<{ success: boolean }>
+        chooseBackupDir: () => Promise<{ cancelled: boolean; path: string | null }>
+      }
       onNavigate: (callback: (path: string) => void) => void
       log: {
         info: (msg: string) => void

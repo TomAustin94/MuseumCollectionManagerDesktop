@@ -12,6 +12,8 @@ import { registerLocationsHandlers } from './ipc/locations'
 import { registerReportsHandlers } from './ipc/reports'
 import { registerExportHandlers } from './ipc/export'
 import { registerAdminHandlers } from './ipc/admin'
+import { registerSettingsHandlers } from './ipc/settings'
+import { getSetting } from './settings'
 import { setupAutoUpdater } from './updater'
 
 let mainWindow: BrowserWindow | null = null
@@ -216,15 +218,18 @@ function scheduleDailyBackup(): void {
 function performBackup(): void {
   try {
     const userData = app.getPath('userData')
-    const dbPath = path.join(userData, 'collection.db')
-    const backupDir = path.join(userData, 'backups')
+    const customDir = getSetting('backupDir')
+    const backupDir = customDir ?? path.join(userData, 'backups')
 
     if (!fs.existsSync(backupDir)) {
       fs.mkdirSync(backupDir, { recursive: true })
     }
 
-    // Keep only last 7 backups
-    const backups = fs.readdirSync(backupDir).sort().reverse()
+    // Keep only last 7 automatic backups in the target directory
+    const backups = fs.readdirSync(backupDir)
+      .filter((f) => f.startsWith('collection-') && f.endsWith('.db'))
+      .sort()
+      .reverse()
     if (backups.length >= 7) {
       backups.slice(6).forEach((b) => fs.unlinkSync(path.join(backupDir, b)))
     }
@@ -281,6 +286,7 @@ app.whenReady().then(() => {
   registerReportsHandlers()
   registerExportHandlers()
   registerAdminHandlers()
+  registerSettingsHandlers()
   console.log('IPC handlers registered')
 
   createWindow()

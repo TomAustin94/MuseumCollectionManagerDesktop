@@ -7,6 +7,7 @@ import {
   MapPin,
   BarChart3,
   Settings,
+  Shield,
   LogOut,
   Building2,
   ChevronLeft,
@@ -21,7 +22,8 @@ const navItems = [
   { path: '/items', label: 'Items', icon: Package },
   { path: '/categories', label: 'Categories', icon: Tag },
   { path: '/locations', label: 'Locations', icon: MapPin },
-  { path: '/reports', label: 'Reports', icon: BarChart3 }
+  { path: '/reports', label: 'Reports', icon: BarChart3 },
+  { path: '/settings', label: 'Settings', icon: Settings }
 ]
 
 interface SidebarProps {
@@ -114,7 +116,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             }
             title={collapsed ? 'Admin' : undefined}
           >
-            <Settings className="h-5 w-5 flex-shrink-0" />
+            <Shield className="h-5 w-5 flex-shrink-0" />
             {!collapsed && <span>Admin</span>}
           </NavLink>
         )}

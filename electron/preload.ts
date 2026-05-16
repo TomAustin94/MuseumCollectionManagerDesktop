@@ -83,6 +83,11 @@ const api = {
     isFirstRun: () => ipcRenderer.invoke('setup:is-first-run'),
     createAdmin: (data: Record<string, unknown>) => ipcRenderer.invoke('setup:create-admin', data)
   },
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    setBackupDir: (dir: string | null) => ipcRenderer.invoke('settings:set-backup-dir', dir),
+    chooseBackupDir: () => ipcRenderer.invoke('settings:choose-backup-dir')
+  },
   onNavigate: (callback: (path: string) => void) => {
     ipcRenderer.on('navigate', (_event, path) => callback(path))
   },
