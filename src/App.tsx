@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -31,7 +31,7 @@ function NavigationListener() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <NavigationListener />
       <Routes>
         <Route path="/setup" element={<SetupPage />} />
@@ -65,7 +65,7 @@ function App() {
         </Route>
       </Routes>
       <Toaster richColors position="top-right" />
-    </BrowserRouter>
+    </HashRouter>
   )
 }
 
