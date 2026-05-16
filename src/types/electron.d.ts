@@ -225,6 +225,17 @@ declare global {
         get: () => Promise<{ backupDir: string | null }>
         setBackupDir: (dir: string | null) => Promise<{ success: boolean }>
         chooseBackupDir: () => Promise<{ cancelled: boolean; path: string | null }>
+        getNetwork: () => Promise<{
+          networkMode: 'standalone' | 'server' | 'client'
+          serverPort: number
+          serverAddress: string
+        }>
+        setNetwork: (data: {
+          networkMode?: 'standalone' | 'server' | 'client'
+          serverPort?: number
+          serverAddress?: string
+        }) => Promise<{ success: boolean }>
+        getLocalIps: () => Promise<string[]>
       }
       onNavigate: (callback: (path: string) => void) => void
       updater: {

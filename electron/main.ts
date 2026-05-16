@@ -1,4 +1,5 @@
-import { app, BrowserWindow, Menu, MenuItem, ipcMain, shell, dialog } from 'electron'
+import { app, BrowserWindow, Menu, ipcMain, shell, dialog } from 'electron'
+import { Server } from 'http'
 import path from 'path'
 import fs from 'fs'
 import { initLogger, write, getLogFilePath } from './logger'
@@ -13,10 +14,13 @@ import { registerReportsHandlers } from './ipc/reports'
 import { registerExportHandlers } from './ipc/export'
 import { registerAdminHandlers } from './ipc/admin'
 import { registerSettingsHandlers } from './ipc/settings'
-import { getSetting } from './settings'
+import { getSetting, loadSettings } from './settings'
 import { setupAutoUpdater, triggerUpdateCheck } from './updater'
+import { createApiServer } from './server'
+import { registerClientProxyHandlers } from './client-proxy'
 
 let mainWindow: BrowserWindow | null = null
+let apiServer: Server | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -226,7 +230,8 @@ function performBackup(): void {
     }
 
     // Keep only last 7 automatic backups in the target directory
-    const backups = fs.readdirSync(backupDir)
+    const backups = fs
+      .readdirSync(backupDir)
       .filter((f) => f.startsWith('collection-') && f.endsWith('.db'))
       .sort()
       .reverse()
@@ -267,32 +272,55 @@ app.whenReady().then(() => {
   initLogger()
   console.log('app ready')
 
-  try {
-    runMigrations()
-    console.log('migrations OK')
-  } catch (err) {
-    console.error('migrations FAILED', err)
-    dialog.showErrorBox('Startup error', `Database initialisation failed:\n\n${err instanceof Error ? err.stack : String(err)}`)
-    app.quit()
-    return
+  const { networkMode, serverPort } = loadSettings()
+  console.log(`Network mode: ${networkMode}`)
+
+  if (networkMode === 'client') {
+    // Client mode: no local DB, proxy all IPC to server over HTTP
+    registerSettingsHandlers()
+    registerClientProxyHandlers()
+    console.log('Client proxy handlers registered')
+  } else {
+    // Standalone or Server mode: run local DB
+    try {
+      runMigrations()
+      console.log('migrations OK')
+    } catch (err) {
+      console.error('migrations FAILED', err)
+      dialog.showErrorBox(
+        'Startup error',
+        `Database initialisation failed:\n\n${err instanceof Error ? err.stack : String(err)}`
+      )
+      app.quit()
+      return
+    }
+
+    cleanupExpiredSessions()
+
+    registerAuthHandlers()
+    registerItemsHandlers()
+    registerCategoriesHandlers()
+    registerLocationsHandlers()
+    registerReportsHandlers()
+    registerExportHandlers()
+    registerAdminHandlers()
+    registerSettingsHandlers()
+    console.log('IPC handlers registered')
+
+    if (networkMode === 'server') {
+      // Also start the HTTP API server for remote clients
+      apiServer = createApiServer(serverPort)
+    }
+
+    scheduleDailyBackup()
   }
-
-  cleanupExpiredSessions()
-
-  registerAuthHandlers()
-  registerItemsHandlers()
-  registerCategoriesHandlers()
-  registerLocationsHandlers()
-  registerReportsHandlers()
-  registerExportHandlers()
-  registerAdminHandlers()
-  registerSettingsHandlers()
-  console.log('IPC handlers registered')
 
   createWindow()
   buildMenu()
-  setupAutoUpdater(mainWindow!)
-  scheduleDailyBackup()
+
+  if (networkMode !== 'client') {
+    setupAutoUpdater(mainWindow!)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -302,12 +330,24 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
-  closeDb()
+  if (apiServer) {
+    apiServer.close()
+    apiServer = null
+  }
+  if (getSetting('networkMode') !== 'client') {
+    closeDb()
+  }
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
 
 app.on('before-quit', () => {
-  closeDb()
+  if (apiServer) {
+    apiServer.close()
+    apiServer = null
+  }
+  if (getSetting('networkMode') !== 'client') {
+    closeDb()
+  }
 })

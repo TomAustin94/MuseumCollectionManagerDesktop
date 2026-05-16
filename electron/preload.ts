@@ -90,7 +90,10 @@ const api = {
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     setBackupDir: (dir: string | null) => ipcRenderer.invoke('settings:set-backup-dir', dir),
-    chooseBackupDir: () => ipcRenderer.invoke('settings:choose-backup-dir')
+    chooseBackupDir: () => ipcRenderer.invoke('settings:choose-backup-dir'),
+    getNetwork: () => ipcRenderer.invoke('settings:get-network'),
+    setNetwork: (data: Record<string, unknown>) => ipcRenderer.invoke('settings:set-network', data),
+    getLocalIps: () => ipcRenderer.invoke('settings:get-local-ips')
   },
   onNavigate: (callback: (path: string) => void) => {
     ipcRenderer.on('navigate', (_event, path) => callback(path))

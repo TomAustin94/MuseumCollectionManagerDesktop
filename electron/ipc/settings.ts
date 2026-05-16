@@ -1,6 +1,20 @@
 import { ipcMain, dialog } from 'electron'
-import { loadSettings, setSetting } from '../settings'
+import os from 'os'
+import { loadSettings, saveSettings, setSetting } from '../settings'
 import { requireAuth } from '../auth/session'
+
+function getLocalIps(): string[] {
+  const interfaces = os.networkInterfaces()
+  const ips: string[] = []
+  for (const iface of Object.values(interfaces)) {
+    for (const addr of iface ?? []) {
+      if (addr.family === 'IPv4' && !addr.internal) {
+        ips.push(addr.address)
+      }
+    }
+  }
+  return ips
+}
 
 export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:get', async (event) => {
@@ -28,4 +42,31 @@ export function registerSettingsHandlers(): void {
     setSetting('backupDir', chosen)
     return { cancelled: false, path: chosen }
   })
+
+  // Network settings — no auth required so they can be read before login
+  ipcMain.handle('settings:get-network', () => {
+    const s = loadSettings()
+    return {
+      networkMode: s.networkMode,
+      serverPort: s.serverPort,
+      serverAddress: s.serverAddress
+    }
+  })
+
+  ipcMain.handle('settings:set-network', async (event, data: unknown) => {
+    await requireAuth(event)
+    const { networkMode, serverPort, serverAddress } = data as {
+      networkMode?: string
+      serverPort?: number
+      serverAddress?: string
+    }
+    const s = loadSettings()
+    if (networkMode !== undefined) s.networkMode = networkMode as typeof s.networkMode
+    if (serverPort !== undefined) s.serverPort = Number(serverPort)
+    if (serverAddress !== undefined) s.serverAddress = String(serverAddress)
+    saveSettings(s)
+    return { success: true }
+  })
+
+  ipcMain.handle('settings:get-local-ips', () => getLocalIps())
 }

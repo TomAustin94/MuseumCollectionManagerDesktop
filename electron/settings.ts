@@ -4,10 +4,16 @@ import fs from 'fs'
 
 export interface AppSettings {
   backupDir: string | null
+  networkMode: 'standalone' | 'server' | 'client'
+  serverPort: number
+  serverAddress: string
 }
 
 const defaults: AppSettings = {
-  backupDir: null
+  backupDir: null,
+  networkMode: 'standalone',
+  serverPort: 4567,
+  serverAddress: ''
 }
 
 function settingsPath(): string {
