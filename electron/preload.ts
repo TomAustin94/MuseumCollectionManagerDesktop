@@ -93,7 +93,15 @@ const api = {
     chooseBackupDir: () => ipcRenderer.invoke('settings:choose-backup-dir'),
     getNetwork: () => ipcRenderer.invoke('settings:get-network'),
     setNetwork: (data: Record<string, unknown>) => ipcRenderer.invoke('settings:set-network', data),
-    getLocalIps: () => ipcRenderer.invoke('settings:get-local-ips')
+    getLocalIps: () => ipcRenderer.invoke('settings:get-local-ips'),
+    getBackupInfo: () => ipcRenderer.invoke('settings:get-backup-info'),
+    setBackupSchedule: (data: Record<string, unknown>) =>
+      ipcRenderer.invoke('settings:set-backup-schedule', data),
+    setServerAddress: (address: string) =>
+      ipcRenderer.invoke('settings:set-server-address', address)
+  },
+  backup: {
+    run: () => ipcRenderer.invoke('db:backup')
   },
   onNavigate: (callback: (path: string) => void) => {
     ipcRenderer.on('navigate', (_event, path) => callback(path))
@@ -101,6 +109,7 @@ const api = {
   updater: {
     check: () => ipcRenderer.invoke('check-for-updates'),
     install: () => ipcRenderer.invoke('install-update'),
+    download: () => ipcRenderer.invoke('download-update'),
     onStatus: (callback: (payload: Record<string, unknown>) => void) => {
       ipcRenderer.on('update-status', (_event, payload) => callback(payload))
     }

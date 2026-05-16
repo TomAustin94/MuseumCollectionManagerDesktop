@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, X, HardDrive, Info, Network, Server, Monitor, Laptop } from 'lucide-react'
+import { FolderOpen, X, HardDrive, Info, Network, Server, Monitor, Laptop, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,6 +26,9 @@ const MODE_LABELS: Record<NetworkMode, { label: string; icon: React.ReactNode; d
 
 export default function SettingsPage() {
   const [backupDir, setBackupDir] = useState<string | null>(null)
+  const [scheduleHour, setScheduleHour] = useState(2)
+  const [retention, setRetention] = useState(7)
+  const [scheduleSaving, setScheduleSaving] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const [networkMode, setNetworkMode] = useState<NetworkMode>('standalone')
@@ -35,18 +38,17 @@ export default function SettingsPage() {
   const [networkSaving, setNetworkSaving] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      window.api.settings.get(),
-      window.api.settings.getNetwork(),
-      window.api.settings.getLocalIps()
-    ]).then(([s, n, ips]) => {
-      setBackupDir(s.backupDir)
+    window.api.settings.get().then((s) => setBackupDir(s.backupDir)).catch(() => null)
+    window.api.settings.getNetwork().then((n) => {
       setNetworkMode(n.networkMode)
       setServerPort(n.serverPort)
       setServerAddress(n.serverAddress)
-      setLocalIps(ips)
-      setLoading(false)
-    })
+    }).catch(() => null)
+    window.api.settings.getLocalIps().then(setLocalIps).catch(() => null)
+    window.api.settings.getBackupInfo().then((b) => {
+      setScheduleHour(b.backupScheduleHour)
+      setRetention(b.backupRetention)
+    }).catch(() => null).finally(() => setLoading(false))
   }, [])
 
   const handleChooseDir = async () => {
@@ -77,6 +79,24 @@ export default function SettingsPage() {
     } finally {
       setNetworkSaving(false)
     }
+  }
+
+  const handleSaveSchedule = async () => {
+    setScheduleSaving(true)
+    try {
+      await window.api.settings.setBackupSchedule({ backupScheduleHour: scheduleHour, backupRetention: retention })
+      toast.success('Backup schedule saved')
+    } catch (err) {
+      toast.error(`Failed to save: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setScheduleSaving(false)
+    }
+  }
+
+  const formatHour = (h: number) => {
+    const ampm = h < 12 ? 'AM' : 'PM'
+    const display = h % 12 === 0 ? 12 : h % 12
+    return `${display}:00 ${ampm}`
   }
 
   const defaultDir = '~/.config/museum-collection-manager/backups'
@@ -253,10 +273,68 @@ export default function SettingsPage() {
             <div className="flex gap-2 p-3 rounded-lg bg-blue-50 border border-blue-100 text-sm text-blue-700">
               <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
               <p>
-                Up to 7 daily backups are kept. The most recent backup is never deleted. To back up
-                immediately or restore from a backup, use the <strong>Admin</strong> panel.
+                To back up immediately or restore from a backup, use the <strong>Admin</strong> panel.
               </p>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Backup Schedule (standalone/server only) ──────── */}
+      {(networkMode === 'standalone' || networkMode === 'server') && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-600" />
+              <CardTitle className="text-base">Backup Schedule</CardTitle>
+            </div>
+            <CardDescription>
+              Configure when automatic backups run and how many are kept.
+              The app must be running at the scheduled time for automatic backups to occur.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!loading && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Daily backup time
+                    </label>
+                    <select
+                      value={scheduleHour}
+                      onChange={(e) => setScheduleHour(Number(e.target.value))}
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>{formatHour(i)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Backups to keep
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={retention}
+                      onChange={(e) => setRetention(Number(e.target.value))}
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleSaveSchedule}
+                  disabled={scheduleSaving}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  {scheduleSaving ? 'Saving…' : 'Save schedule'}
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       )}

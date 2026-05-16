@@ -1,5 +1,7 @@
-import { ipcMain, dialog } from 'electron'
+import { ipcMain, dialog, app } from 'electron'
 import os from 'os'
+import fs from 'fs'
+import path from 'path'
 import { loadSettings, saveSettings, setSetting } from '../settings'
 import { requireAuth } from '../auth/session'
 
@@ -69,4 +71,52 @@ export function registerSettingsHandlers(): void {
   })
 
   ipcMain.handle('settings:get-local-ips', () => getLocalIps())
+
+  // Backup info — requires auth but visible to all roles
+  ipcMain.handle('settings:get-backup-info', async (event) => {
+    await requireAuth(event)
+    const s = loadSettings()
+    const lastBackupFile = path.join(app.getPath('userData'), '.last-backup')
+    let lastBackupTime: string | null = null
+    try {
+      if (fs.existsSync(lastBackupFile)) {
+        lastBackupTime = fs.readFileSync(lastBackupFile, 'utf-8').trim()
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      lastBackupTime,
+      backupDir: s.backupDir,
+      backupScheduleHour: s.backupScheduleHour,
+      backupRetention: s.backupRetention
+    }
+  })
+
+  // Backup schedule — admin only
+  ipcMain.handle('settings:set-backup-schedule', async (event, data: unknown) => {
+    const user = await requireAuth(event)
+    if (user.role !== 'admin') throw new Error('Admin access required')
+    const { backupScheduleHour, backupRetention } = data as {
+      backupScheduleHour?: number
+      backupRetention?: number
+    }
+    const s = loadSettings()
+    if (backupScheduleHour !== undefined) {
+      s.backupScheduleHour = Math.min(23, Math.max(0, Math.round(Number(backupScheduleHour))))
+    }
+    if (backupRetention !== undefined) {
+      s.backupRetention = Math.min(30, Math.max(1, Math.round(Number(backupRetention))))
+    }
+    saveSettings(s)
+    return { success: true }
+  })
+
+  // Allow setting server address before login (client mode host selection)
+  ipcMain.handle('settings:set-server-address', (_event, address: unknown) => {
+    const s = loadSettings()
+    s.serverAddress = String(address ?? '').trim()
+    saveSettings(s)
+    return { success: true }
+  })
 }

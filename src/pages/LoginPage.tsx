@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Building2, Eye, EyeOff, Lock } from 'lucide-react'
+import { Building2, Eye, EyeOff, Lock, Server, CheckCircle, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,7 +24,14 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
-  const [isFirstRun, setIsFirstRun] = useState(false)
+
+  // Network mode / server address state
+  const [networkMode, setNetworkMode] = useState<'standalone' | 'server' | 'client'>('standalone')
+  const [serverAddress, setServerAddress] = useState('')
+  const [serverAddressInput, setServerAddressInput] = useState('')
+  const [connectionStatus, setConnectionStatus] = useState<'unchecked' | 'checking' | 'ok' | 'error'>('unchecked')
+  const [connectionError, setConnectionError] = useState('')
+  const [savingAddress, setSavingAddress] = useState(false)
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard'
 
@@ -33,17 +40,47 @@ export default function LoginPage() {
   })
 
   useEffect(() => {
-    // Check if already logged in
     window.api.auth.getSession().then((user) => {
       if (user) navigate(from, { replace: true })
     }).catch(() => {})
 
-    // Check first run
     window.api.setup.isFirstRun().then((firstRun) => {
-      setIsFirstRun(firstRun)
       if (firstRun) navigate('/setup', { replace: true })
     }).catch(() => {})
+
+    window.api.settings.getNetwork().then((n) => {
+      setNetworkMode(n.networkMode)
+      setServerAddress(n.serverAddress)
+      setServerAddressInput(n.serverAddress)
+    }).catch(() => null)
   }, [navigate, from])
+
+  const testAndSaveAddress = async () => {
+    const addr = serverAddressInput.trim()
+    if (!addr) {
+      setConnectionError('Please enter the server address.')
+      setConnectionStatus('error')
+      return
+    }
+    setSavingAddress(true)
+    setConnectionStatus('checking')
+    setConnectionError('')
+    try {
+      // Try to reach the server
+      const res = await fetch(`http://${addr}/api/setup/is-first-run`, { signal: AbortSignal.timeout(5000) })
+      if (!res.ok) throw new Error(`Server returned ${res.status}`)
+      // Save
+      await window.api.settings.setServerAddress(addr)
+      setServerAddress(addr)
+      setConnectionStatus('ok')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not reach server'
+      setConnectionError(`Connection failed: ${msg}. Check the address and that the server is running.`)
+      setConnectionStatus('error')
+    } finally {
+      setSavingAddress(false)
+    }
+  }
 
   const onSubmit = async (data: LoginForm) => {
     setIsLoading(true)
@@ -65,6 +102,8 @@ export default function LoginPage() {
     }
   }
 
+  const isClientWithNoAddress = networkMode === 'client' && !serverAddress
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -77,9 +116,52 @@ export default function LoginPage() {
           <CardTitle className="text-2xl">Museum Collection Manager</CardTitle>
           <CardDescription>Sign in to access your collection</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Client mode: server address selector */}
+          {networkMode === 'client' && (
+            <div className="p-4 rounded-lg border border-amber-200 bg-amber-50 space-y-3">
+              <div className="flex items-center gap-2 text-amber-800">
+                <Server className="h-4 w-4 flex-shrink-0" />
+                <p className="text-sm font-medium">Connecting to server</p>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. 192.168.1.100:4567"
+                  value={serverAddressInput}
+                  onChange={(e) => {
+                    setServerAddressInput(e.target.value)
+                    setConnectionStatus('unchecked')
+                  }}
+                  className="font-mono text-sm"
+                  onKeyDown={(e) => e.key === 'Enter' && testAndSaveAddress()}
+                />
+                <Button
+                  variant="outline"
+                  onClick={testAndSaveAddress}
+                  disabled={savingAddress}
+                  className="shrink-0"
+                >
+                  {savingAddress ? '…' : 'Connect'}
+                </Button>
+              </div>
+
+              {connectionStatus === 'ok' && (
+                <div className="flex items-center gap-1.5 text-green-700 text-xs">
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  Connected to {serverAddress}
+                </div>
+              )}
+              {connectionStatus === 'error' && (
+                <div className="flex items-start gap-1.5 text-red-700 text-xs">
+                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  {connectionError}
+                </div>
+              )}
+            </div>
+          )}
+
           {error && (
-            <Alert variant="destructive" className="mb-4">
+            <Alert variant="destructive">
               <Lock className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
@@ -92,6 +174,7 @@ export default function LoginPage() {
                 id="username"
                 placeholder="Enter your username"
                 autoComplete="username"
+                disabled={isClientWithNoAddress}
                 {...register('username')}
               />
               {errors.username && (
@@ -108,6 +191,7 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   autoComplete="current-password"
                   className="pr-10"
+                  disabled={isClientWithNoAddress}
                   {...register('password')}
                 />
                 <button
@@ -123,19 +207,16 @@ export default function LoginPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            {isClientWithNoAddress && (
+              <p className="text-xs text-amber-700 text-center">
+                Connect to a server above before signing in.
+              </p>
+            )}
+
+            <Button type="submit" className="w-full" disabled={isLoading || isClientWithNoAddress}>
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
-
-          {isFirstRun && (
-            <p className="mt-4 text-center text-sm text-muted-foreground">
-              First time?{' '}
-              <Link to="/setup" className="text-amber-600 hover:underline">
-                Set up your account
-              </Link>
-            </p>
-          )}
         </CardContent>
       </Card>
     </div>

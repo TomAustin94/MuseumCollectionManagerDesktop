@@ -10,12 +10,15 @@ export function triggerUpdateCheck(): void {
 export function setupAutoUpdater(mainWindow: BrowserWindow): void {
   autoUpdater.autoDownload = false
 
+  let pendingVersion = ''
+
   autoUpdater.on('checking-for-update', () => {
     mainWindow?.webContents.send('update-status', { status: 'checking' })
   })
 
   autoUpdater.on('update-available', (info) => {
-    mainWindow?.webContents.send('update-status', { status: 'available', version: (info as { version: string }).version })
+    pendingVersion = (info as { version: string }).version
+    mainWindow?.webContents.send('update-status', { status: 'available', version: pendingVersion })
   })
 
   autoUpdater.on('update-not-available', () => {
@@ -27,7 +30,11 @@ export function setupAutoUpdater(mainWindow: BrowserWindow): void {
   })
 
   autoUpdater.on('download-progress', (progressObj) => {
-    mainWindow?.webContents.send('update-status', { status: 'downloading', percent: Math.round((progressObj as { percent: number }).percent) })
+    mainWindow?.webContents.send('update-status', {
+      status: 'downloading',
+      version: pendingVersion,
+      percent: Math.round((progressObj as { percent: number }).percent)
+    })
   })
 
   autoUpdater.on('update-downloaded', (info) => {
@@ -44,6 +51,14 @@ export function setupAutoUpdater(mainWindow: BrowserWindow): void {
 
   ipcMain.handle('install-update', () => {
     autoUpdater.quitAndInstall()
+  })
+
+  ipcMain.handle('download-update', async () => {
+    try {
+      await autoUpdater.downloadUpdate()
+    } catch (err) {
+      console.error('Download failed:', err)
+    }
   })
 
   // Check on launch after a short delay (gives the window time to render)

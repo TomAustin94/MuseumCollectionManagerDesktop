@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
@@ -148,6 +148,43 @@ export default function AdminPage() {
     fetchUsers()
     fetchAuditLog()
   }, [])
+
+  const [expandedAuditRow, setExpandedAuditRow] = useState<number | null>(null)
+
+  const getRecordName = (entry: AuditLogEntry): string => {
+    try {
+      const data = JSON.parse((entry.new_data ?? entry.old_data) || '{}') as Record<string, unknown>
+      if (entry.table_name === 'items') {
+        return String(data.title || data.accession_number || `#${entry.record_id}`)
+      }
+      if (entry.table_name === 'categories' || entry.table_name === 'locations') {
+        return String(data.name || `#${entry.record_id}`)
+      }
+      if (entry.table_name === 'users') {
+        return String(data.username || `#${entry.record_id}`)
+      }
+    } catch { /* ignore */ }
+    return `#${entry.record_id}`
+  }
+
+  const SKIP_DIFF_FIELDS = new Set([
+    'id', 'created_at', 'updated_at', 'changed_at', 'password_hash', 'totp_secret'
+  ])
+
+  const getDiff = (entry: AuditLogEntry): Array<{ field: string; from: string; to: string }> => {
+    if (entry.action !== 'UPDATE' || !entry.old_data || !entry.new_data) return []
+    try {
+      const oldD = JSON.parse(entry.old_data) as Record<string, unknown>
+      const newD = JSON.parse(entry.new_data) as Record<string, unknown>
+      return Object.keys(newD)
+        .filter((k) => !SKIP_DIFF_FIELDS.has(k) && String(oldD[k] ?? '') !== String(newD[k] ?? ''))
+        .map((k) => ({
+          field: k.replace(/_/g, ' '),
+          from: String(oldD[k] ?? '—'),
+          to: String(newD[k] ?? '—')
+        }))
+    } catch { return [] }
+  }
 
   const onCreateUser = async (data: CreateUserForm) => {
     setSaving(true)
@@ -407,35 +444,92 @@ export default function AdminPage() {
                       <TableHead>User</TableHead>
                       <TableHead>Table</TableHead>
                       <TableHead>Action</TableHead>
-                      <TableHead>Record ID</TableHead>
+                      <TableHead>Record</TableHead>
+                      <TableHead>Changes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {auditEntries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="text-sm">{formatDateTime(entry.changed_at)}</TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {entry.username || 'System'}
-                        </TableCell>
-                        <TableCell className="text-sm">{entry.table_name}</TableCell>
-                        <TableCell>
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              entry.action === 'INSERT'
-                                ? 'bg-green-100 text-green-800'
-                                : entry.action === 'UPDATE'
-                                ? 'bg-blue-100 text-blue-800'
-                                : entry.action === 'DELETE'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}
+                    {auditEntries.map((entry) => {
+                      const diff = getDiff(entry)
+                      const isExpanded = expandedAuditRow === entry.id
+                      return (
+                        <React.Fragment key={entry.id}>
+                          <TableRow
+                            className="cursor-pointer hover:bg-gray-50"
+                            onClick={() => setExpandedAuditRow(isExpanded ? null : entry.id)}
                           >
-                            {entry.action}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm">{entry.record_id}</TableCell>
-                      </TableRow>
-                    ))}
+                            <TableCell className="text-sm">{formatDateTime(entry.changed_at)}</TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {entry.username || 'System'}
+                            </TableCell>
+                            <TableCell className="text-sm capitalize">
+                              {entry.table_name.replace('_', ' ')}
+                            </TableCell>
+                            <TableCell>
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  entry.action === 'INSERT'
+                                    ? 'bg-green-100 text-green-800'
+                                    : entry.action === 'UPDATE'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : entry.action === 'DELETE'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}
+                              >
+                                {entry.action}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-sm font-medium">
+                              {getRecordName(entry)}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {entry.action === 'UPDATE' && diff.length > 0
+                                ? `${diff.length} field${diff.length !== 1 ? 's' : ''} changed`
+                                : entry.action === 'INSERT'
+                                ? 'New record'
+                                : entry.action === 'DELETE'
+                                ? 'Deleted'
+                                : '—'}
+                            </TableCell>
+                          </TableRow>
+                          {isExpanded && (
+                            <TableRow className="bg-gray-50">
+                              <TableCell colSpan={6} className="py-3 px-4">
+                                {entry.action === 'UPDATE' && diff.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {diff.map(({ field, from, to }) => (
+                                      <div key={field} className="flex items-start gap-2 text-xs">
+                                        <span className="font-medium text-gray-600 capitalize w-32 flex-shrink-0">
+                                          {field}
+                                        </span>
+                                        <span className="text-red-600 line-through truncate max-w-[180px]">
+                                          {from}
+                                        </span>
+                                        <span className="text-gray-400">→</span>
+                                        <span className="text-green-700 truncate max-w-[180px]">
+                                          {to}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : entry.action === 'INSERT' ? (
+                                  <p className="text-xs text-gray-500">
+                                    Created: {getRecordName(entry)}
+                                  </p>
+                                ) : entry.action === 'DELETE' ? (
+                                  <p className="text-xs text-gray-500">
+                                    Deleted: {getRecordName(entry)}
+                                  </p>
+                                ) : (
+                                  <p className="text-xs text-gray-500">No details available</p>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               )}
