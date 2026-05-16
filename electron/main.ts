@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, MenuItem, ipcMain, shell, dialog } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import { initLogger, write, getLogFilePath } from './logger'
 import { runMigrations } from './db/migrate'
 import { closeDb, getDb } from './db/client'
 import { cleanupExpiredSessions } from './auth/session'
@@ -249,14 +250,30 @@ ipcMain.handle('db:backup', async () => {
   return { success: true }
 })
 
-app.whenReady().then(() => {
-  // Initialize database
-  runMigrations()
+// Renderer → main log relay
+ipcMain.on('log:renderer', (_event, level: string, msg: string) => {
+  write(level, [msg])
+})
 
-  // Clean up expired sessions
+// Expose log file path so the renderer can tell the user where to find it
+ipcMain.handle('log:get-path', () => getLogFilePath())
+
+app.whenReady().then(() => {
+  initLogger()
+  console.log('app ready')
+
+  try {
+    runMigrations()
+    console.log('migrations OK')
+  } catch (err) {
+    console.error('migrations FAILED', err)
+    dialog.showErrorBox('Startup error', `Database initialisation failed:\n\n${err instanceof Error ? err.stack : String(err)}`)
+    app.quit()
+    return
+  }
+
   cleanupExpiredSessions()
 
-  // Register all IPC handlers
   registerAuthHandlers()
   registerItemsHandlers()
   registerCategoriesHandlers()
@@ -264,6 +281,7 @@ app.whenReady().then(() => {
   registerReportsHandlers()
   registerExportHandlers()
   registerAdminHandlers()
+  console.log('IPC handlers registered')
 
   createWindow()
   buildMenu()

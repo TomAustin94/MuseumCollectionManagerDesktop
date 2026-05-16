@@ -218,6 +218,11 @@ declare global {
         createAdmin: (data: Record<string, unknown>) => Promise<{ success: boolean; userId: number }>
       }
       onNavigate: (callback: (path: string) => void) => void
+      log: {
+        info: (msg: string) => void
+        error: (msg: string) => void
+        getLogPath: () => Promise<string>
+      }
     }
   }
 }
