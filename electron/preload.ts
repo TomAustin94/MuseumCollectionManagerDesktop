@@ -85,6 +85,11 @@ const api = {
   },
   onNavigate: (callback: (path: string) => void) => {
     ipcRenderer.on('navigate', (_event, path) => callback(path))
+  },
+  log: {
+    info:  (msg: string) => ipcRenderer.send('log:renderer', 'RENDERER', msg),
+    error: (msg: string) => ipcRenderer.send('log:renderer', 'RENDERER-ERROR', msg),
+    getLogPath: () => ipcRenderer.invoke('log:get-path')
   }
 }
 
