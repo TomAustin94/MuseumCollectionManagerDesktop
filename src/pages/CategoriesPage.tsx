@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Plus, Pencil, Trash2, FolderTree } from 'lucide-react'
 import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
@@ -37,6 +38,7 @@ const categorySchema = z.object({
 type CategoryForm = z.infer<typeof categorySchema>
 
 export default function CategoriesPage() {
+  const navigate = useNavigate()
   const { categories, loading, refetch } = useCategories()
   const [user, setUser] = useState<{ role: string } | null>(null)
   const [formDialog, setFormDialog] = useState<{
@@ -158,7 +160,11 @@ export default function CategoriesPage() {
               </TableHeader>
               <TableBody>
                 {categories.map((cat) => (
-                  <TableRow key={cat.id}>
+                  <TableRow
+                    key={cat.id}
+                    className="cursor-pointer hover:bg-amber-50"
+                    onClick={() => navigate(`/items?categoryId=${cat.id}`)}
+                  >
                     <TableCell className="font-medium">
                       {cat.parent_id && (
                         <span className="text-muted-foreground mr-1">└</span>
@@ -172,7 +178,9 @@ export default function CategoriesPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">{cat.item_count}</span>
+                      <span className="text-sm font-medium text-amber-700 underline underline-offset-2">
+                        {cat.item_count} item{cat.item_count !== 1 ? 's' : ''}
+                      </span>
                     </TableCell>
                     {canEdit && (
                       <TableCell>
@@ -181,7 +189,7 @@ export default function CategoriesPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => openEdit(cat)}
+                            onClick={(e) => { e.stopPropagation(); openEdit(cat) }}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -190,7 +198,7 @@ export default function CategoriesPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => setDeleteDialog({ open: true, category: cat })}
+                              onClick={(e) => { e.stopPropagation(); setDeleteDialog({ open: true, category: cat }) }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

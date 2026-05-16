@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   BarChart,
   Bar,
@@ -32,6 +33,7 @@ const CONDITION_COLORS: Record<string, string> = {
 }
 
 export default function ReportsPage() {
+  const navigate = useNavigate()
   const [overview, setOverview] = useState<{
     totalItems: number
     totalValue: number
@@ -129,7 +131,11 @@ export default function ReportsPage() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={overview?.byStatus || []}>
+                    <BarChart
+                      data={overview?.byStatus || []}
+                      style={{ cursor: 'pointer' }}
+                      onClick={(d) => d?.activePayload?.[0] && navigate(`/items?status=${d.activePayload[0].payload.status}`)}
+                    >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="status" tick={{ fontSize: 12 }} />
                       <YAxis tick={{ fontSize: 12 }} />
@@ -137,6 +143,7 @@ export default function ReportsPage() {
                       <Bar dataKey="count" name="Items" fill="#3b82f6" />
                     </BarChart>
                   </ResponsiveContainer>
+                  <p className="text-xs text-muted-foreground text-center mt-1">Click a bar to view items</p>
                 </CardContent>
               </Card>
 
@@ -146,7 +153,7 @@ export default function ReportsPage() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
+                    <PieChart style={{ cursor: 'pointer' }}>
                       <Pie
                         data={overview?.byCondition || []}
                         dataKey="count"
@@ -157,6 +164,7 @@ export default function ReportsPage() {
                         label={({ condition_rating, percent }) =>
                           `${condition_rating}: ${(percent * 100).toFixed(0)}%`
                         }
+                        onClick={(entry) => navigate(`/items?conditionRating=${entry.condition_rating}`)}
                       >
                         {(overview?.byCondition || []).map((entry, i) => (
                           <Cell
@@ -168,6 +176,7 @@ export default function ReportsPage() {
                       <Tooltip />
                     </PieChart>
                   </ResponsiveContainer>
+                  <p className="text-xs text-muted-foreground text-center mt-1">Click a segment to view items</p>
                 </CardContent>
               </Card>
             </div>
@@ -197,6 +206,8 @@ export default function ReportsPage() {
                     data={locationData?.byLocation || []}
                     layout="vertical"
                     margin={{ left: 100 }}
+                    style={{ cursor: 'pointer' }}
+                    onClick={(d) => d?.activePayload?.[0] && navigate(`/items?locationId=${d.activePayload[0].payload.id}`)}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" tick={{ fontSize: 12 }} />
@@ -205,6 +216,7 @@ export default function ReportsPage() {
                     <Bar dataKey="item_count" name="Items" fill="#3b82f6" />
                   </BarChart>
                 </ResponsiveContainer>
+                <p className="text-xs text-muted-foreground text-center mt-1 pb-2">Click a bar to view items</p>
               </CardContent>
             </Card>
 
@@ -221,14 +233,18 @@ export default function ReportsPage() {
                   </TableHeader>
                   <TableBody>
                     {(locationData?.byLocation || []).map((loc) => (
-                      <TableRow key={loc.id}>
+                      <TableRow
+                        key={loc.id}
+                        className="cursor-pointer hover:bg-amber-50"
+                        onClick={() => navigate(`/items?locationId=${loc.id}`)}
+                      >
                         <TableCell className="font-medium">{loc.name}</TableCell>
                         <TableCell>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getLocationTypeColor(loc.type)}`}>
                             {loc.type}
                           </span>
                         </TableCell>
-                        <TableCell>{loc.item_count}</TableCell>
+                        <TableCell className="text-amber-700 font-medium underline underline-offset-2">{loc.item_count}</TableCell>
                         <TableCell>{formatCurrency(loc.total_value)}</TableCell>
                       </TableRow>
                     ))}
@@ -320,7 +336,11 @@ export default function ReportsPage() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={conditionData?.conditionBreakdown || []}>
+                    <BarChart
+                      data={conditionData?.conditionBreakdown || []}
+                      style={{ cursor: 'pointer' }}
+                      onClick={(d) => d?.activePayload?.[0] && navigate(`/items?conditionRating=${d.activePayload[0].payload.condition_rating}`)}
+                    >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="condition_rating" tick={{ fontSize: 12 }} />
                       <YAxis tick={{ fontSize: 12 }} />
@@ -350,7 +370,11 @@ export default function ReportsPage() {
                     </TableHeader>
                     <TableBody>
                       {(conditionData?.conditionBreakdown || []).map((row) => (
-                        <TableRow key={row.condition_rating}>
+                        <TableRow
+                          key={row.condition_rating}
+                          className="cursor-pointer hover:bg-amber-50"
+                          onClick={() => navigate(`/items?conditionRating=${row.condition_rating}`)}
+                        >
                           <TableCell>
                             <span
                               className={`text-xs px-2 py-0.5 rounded-full font-medium ${getConditionColor(row.condition_rating)}`}
@@ -358,7 +382,7 @@ export default function ReportsPage() {
                               {row.condition_rating}
                             </span>
                           </TableCell>
-                          <TableCell>{row.count}</TableCell>
+                          <TableCell className="text-amber-700 font-medium underline underline-offset-2">{row.count}</TableCell>
                           <TableCell>{formatCurrency(row.total_value)}</TableCell>
                         </TableRow>
                       ))}
@@ -388,7 +412,11 @@ export default function ReportsPage() {
                     </TableHeader>
                     <TableBody>
                       {conditionData?.itemsNeedingAttention.map((item) => (
-                        <TableRow key={item.id}>
+                        <TableRow
+                          key={item.id}
+                          className="cursor-pointer hover:bg-amber-50"
+                          onClick={() => navigate(`/items/${item.id}`)}
+                        >
                           <TableCell className="font-medium">{item.title}</TableCell>
                           <TableCell>
                             <span

@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
   createColumnHelper
 } from '@tanstack/react-table'
-import { Plus, Search, X, Eye, Pencil, Trash2, Filter, Package } from 'lucide-react'
+import { Search, X, Eye, Pencil, Trash2, Filter, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +37,7 @@ const columnHelper = createColumnHelper<Item>()
 
 export default function ItemsPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { categories } = useCategories()
   const { locations } = useLocations()
 
@@ -47,11 +48,13 @@ export default function ItemsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('')
-  const [categoryFilter, setCategoryFilter] = useState<string>('')
-  const [locationFilter, setLocationFilter] = useState<string>('')
-  const [conditionFilter, setConditionFilter] = useState<string>('')
-  const [showFilters, setShowFilters] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') ?? '')
+  const [categoryFilter, setCategoryFilter] = useState<string>(searchParams.get('categoryId') ?? '')
+  const [locationFilter, setLocationFilter] = useState<string>(searchParams.get('locationId') ?? '')
+  const [conditionFilter, setConditionFilter] = useState<string>(searchParams.get('conditionRating') ?? '')
+  const [showFilters, setShowFilters] = useState(
+    !!(searchParams.get('status') || searchParams.get('categoryId') || searchParams.get('locationId') || searchParams.get('conditionRating'))
+  )
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Item | null }>({
     open: false,
     item: null
@@ -231,14 +234,6 @@ export default function ItemsPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Items</h1>
             <p className="text-sm text-gray-500">{total} item{total !== 1 ? 's' : ''} total</p>
-          </div>
-          <div className="flex gap-2">
-            {(user?.role === 'admin' || user?.role === 'editor') && (
-              <Button onClick={() => navigate('/items/new')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Item
-              </Button>
-            )}
           </div>
         </div>
 

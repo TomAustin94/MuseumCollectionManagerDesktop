@@ -11,12 +11,10 @@ import {
   Pie,
   Cell
 } from 'recharts'
-import { Package, MapPin, Tag, TrendingUp, Plus, FileDown } from 'lucide-react'
+import { Package, MapPin, Tag, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, formatDateTime, getStatusColor, getConditionColor } from '@/lib/utils'
-import { toast } from 'sonner'
 
 const STATUS_COLORS: Record<string, string> = {
   display: '#10b981',
@@ -69,17 +67,6 @@ export default function DashboardPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const handleExport = async () => {
-    try {
-      const result = await window.api.export.csv()
-      if (result.success) {
-        toast.success(`Exported ${result.count} items to CSV`)
-      }
-    } catch {
-      toast.error('Export failed')
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -91,21 +78,9 @@ export default function DashboardPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500">Overview of your collection</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport}>
-            <FileDown className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
-          <Button onClick={() => navigate('/items/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Item
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-sm text-gray-500">Overview of your collection</p>
       </div>
 
       {/* Stats Cards */}

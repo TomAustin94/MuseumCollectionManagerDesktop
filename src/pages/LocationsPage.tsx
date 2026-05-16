@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Plus, Pencil, Trash2, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
@@ -39,6 +40,7 @@ const locationSchema = z.object({
 type LocationForm = z.infer<typeof locationSchema>
 
 export default function LocationsPage() {
+  const navigate = useNavigate()
   const { locations, loading, refetch } = useLocations()
   const [user, setUser] = useState<{ role: string } | null>(null)
   const [formDialog, setFormDialog] = useState<{
@@ -152,7 +154,11 @@ export default function LocationsPage() {
               </TableHeader>
               <TableBody>
                 {locations.map((loc) => (
-                  <TableRow key={loc.id}>
+                  <TableRow
+                    key={loc.id}
+                    className="cursor-pointer hover:bg-amber-50"
+                    onClick={() => navigate(`/items?locationId=${loc.id}`)}
+                  >
                     <TableCell className="font-medium">{loc.name}</TableCell>
                     <TableCell>
                       <span
@@ -167,7 +173,9 @@ export default function LocationsPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">{loc.item_count}</span>
+                      <span className="text-sm font-medium text-amber-700 underline underline-offset-2">
+                        {loc.item_count} item{loc.item_count !== 1 ? 's' : ''}
+                      </span>
                     </TableCell>
                     {canEdit && (
                       <TableCell>
@@ -176,7 +184,7 @@ export default function LocationsPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => openEdit(loc)}
+                            onClick={(e) => { e.stopPropagation(); openEdit(loc) }}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -185,7 +193,7 @@ export default function LocationsPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => setDeleteDialog({ open: true, location: loc })}
+                              onClick={(e) => { e.stopPropagation(); setDeleteDialog({ open: true, location: loc }) }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
