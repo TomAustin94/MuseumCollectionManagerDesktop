@@ -71,7 +71,7 @@ export function registerAuthHandlers(): void {
       username: z.string().min(3).max(50),
       email: z.string().email(),
       password: z.string().min(12),
-      fullName: z.string().optional()
+      fullName: z.string().nullable().optional()
     }).parse(data)
 
     const validation = validatePasswordStrength(parsed.password)
