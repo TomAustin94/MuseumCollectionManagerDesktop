@@ -188,7 +188,7 @@ export default function LocationsPage() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          {user?.role === 'admin' && (
+                          {canEdit && (
                             <Button
                               variant="ghost"
                               size="icon"

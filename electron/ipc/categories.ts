@@ -113,8 +113,8 @@ export function registerCategoriesHandlers(): void {
 
   ipcMain.handle('categories:delete', async (event, id: unknown) => {
     const user = await requireAuth(event)
-    if (user.role !== 'admin') {
-      throw new Error('Only admins can delete categories')
+    if (user.role !== 'admin' && user.role !== 'editor') {
+      throw new Error('Insufficient permissions to delete categories')
     }
 
     const catId = z.number().int().positive().parse(id)

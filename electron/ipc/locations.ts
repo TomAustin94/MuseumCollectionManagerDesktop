@@ -103,8 +103,8 @@ export function registerLocationsHandlers(): void {
 
   ipcMain.handle('locations:delete', async (event, id: unknown) => {
     const user = await requireAuth(event)
-    if (user.role !== 'admin') {
-      throw new Error('Only admins can delete locations')
+    if (user.role !== 'admin' && user.role !== 'editor') {
+      throw new Error('Insufficient permissions to delete locations')
     }
 
     const locId = z.number().int().positive().parse(id)

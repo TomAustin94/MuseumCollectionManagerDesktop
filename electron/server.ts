@@ -431,7 +431,7 @@ const rpcHandlers: Record<string, RpcHandler> = {
   },
 
   'categories:delete': async (user, [id]) => {
-    if (user.role !== 'admin') throw new Error('Only admins can delete categories')
+    if (user.role !== 'admin' && user.role !== 'editor') throw new Error('Insufficient permissions to delete categories')
     const catId = z.number().int().positive().parse(id)
     const db = getDb()
     const existing = db.prepare('SELECT * FROM categories WHERE id = ?').get(catId)
@@ -491,7 +491,7 @@ const rpcHandlers: Record<string, RpcHandler> = {
   },
 
   'locations:delete': async (user, [id]) => {
-    if (user.role !== 'admin') throw new Error('Only admins can delete locations')
+    if (user.role !== 'admin' && user.role !== 'editor') throw new Error('Insufficient permissions to delete locations')
     const locId = z.number().int().positive().parse(id)
     const db = getDb()
     const existing = db.prepare('SELECT * FROM locations WHERE id = ?').get(locId)
