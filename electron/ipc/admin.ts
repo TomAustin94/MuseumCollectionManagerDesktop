@@ -5,6 +5,7 @@ import fs from 'fs'
 import { getDb } from '../db/client'
 import { requireAuth } from '../auth/session'
 import { hashPassword, validatePasswordStrength } from '../auth/password'
+import { seedDemoData } from '../db/seed'
 
 const CreateUserSchema = z.object({
   username: z.string().min(3).max(50),
@@ -248,5 +249,41 @@ export function registerAdminHandlers(): void {
         fs.unlinkSync(tempPath)
       }
     }
+  })
+
+  // Import demo data
+  ipcMain.handle('admin:demo:import', async (event) => {
+    const user = await requireAdmin(event)
+    const db = getDb()
+    const counts = seedDemoData(db, user.id)
+    return { success: true, ...counts }
+  })
+
+  // Clear demo data (removes items/categories/locations whose accession numbers match seed pattern)
+  ipcMain.handle('admin:demo:clear', async (event) => {
+    await requireAdmin(event)
+    const db = getDb()
+    const deleteItems = db.prepare(`
+      DELETE FROM items WHERE accession_number GLOB '20??.0??.00?'
+    `)
+    const { changes: items } = deleteItems.run()
+    // Remove categories and locations that are now empty
+    db.prepare(`
+      DELETE FROM categories WHERE id NOT IN (SELECT DISTINCT category_id FROM items WHERE category_id IS NOT NULL)
+        AND name IN (
+          'Fine Art','Decorative Arts','Archaeology','Natural History','Photography & Media',
+          'Paintings','Sculptures','Drawings & Prints','Ceramics & Pottery','Textiles & Costumes',
+          'Furniture','Classical Antiquities','Pre-Columbian','Fossils & Minerals'
+        )
+    `).run()
+    db.prepare(`
+      DELETE FROM locations WHERE id NOT IN (SELECT DISTINCT location_id FROM items WHERE location_id IS NOT NULL)
+        AND name IN (
+          'Main Gallery','East Wing Gallery','West Wing Gallery',
+          'Archive Storage A','Archive Storage B','Conservation Lab',
+          'City Library Loan','University Loan'
+        )
+    `).run()
+    return { success: true, items }
   })
 }

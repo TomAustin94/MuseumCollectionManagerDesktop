@@ -77,6 +77,10 @@ const api = {
     database: {
       backup: () => ipcRenderer.invoke('admin:database:backup'),
       restore: () => ipcRenderer.invoke('admin:database:restore')
+    },
+    demo: {
+      import: () => ipcRenderer.invoke('admin:demo:import'),
+      clear: () => ipcRenderer.invoke('admin:demo:clear')
     }
   },
   setup: {

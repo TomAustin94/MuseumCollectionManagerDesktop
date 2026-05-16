@@ -212,6 +212,10 @@ declare global {
           backup: () => Promise<{ success: boolean; filePath?: string; reason?: string }>
           restore: () => Promise<{ success: boolean; reason?: string }>
         }
+        demo: {
+          import: () => Promise<{ success: boolean; categories: number; locations: number; items: number }>
+          clear: () => Promise<{ success: boolean; items: number }>
+        }
       }
       setup: {
         isFirstRun: () => Promise<boolean>

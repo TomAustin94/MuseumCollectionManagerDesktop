@@ -13,7 +13,9 @@ import {
   Upload,
   Shield,
   Key,
-  RefreshCw
+  RefreshCw,
+  FlaskConical,
+  Eraser
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -232,6 +234,24 @@ export default function AdminPage() {
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Restore failed')
+    }
+  }
+
+  const handleDemoImport = async () => {
+    try {
+      const result = await window.api.admin.demo.import()
+      toast.success(`Demo data imported: ${result.items} items, ${result.categories} categories, ${result.locations} locations`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Import failed')
+    }
+  }
+
+  const handleDemoClear = async () => {
+    try {
+      const result = await window.api.admin.demo.clear()
+      toast.success(`Removed ${result.items} demo items`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Clear failed')
     }
   }
 
@@ -484,6 +504,32 @@ export default function AdminPage() {
                   <Upload className="h-4 w-4 mr-2" />
                   Restore from Backup
                 </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FlaskConical className="h-4 w-4 text-amber-600" />
+                  Demo Data
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Populate the collection with sample items — paintings, sculptures, ceramics,
+                  archaeology, natural history and more — to explore the app before adding your
+                  own data. Demo items can be removed at any time.
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={handleDemoImport} className="flex items-center gap-2">
+                    <FlaskConical className="h-4 w-4" />
+                    Import Demo Data
+                  </Button>
+                  <Button variant="ghost" onClick={handleDemoClear} className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50">
+                    <Eraser className="h-4 w-4" />
+                    Remove Demo Data
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
