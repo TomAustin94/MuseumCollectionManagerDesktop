@@ -41,7 +41,7 @@ const config = {
   },
   publish: {
     provider: 'github',
-    owner: 'TomAustin94',
+    owner: 'radverth',
     repo: 'MuseumCollectionManagerDesktop'
   }
 }
