@@ -304,6 +304,12 @@ export function registerItemsHandlers(): void {
     const offset = (searchParams.page - 1) * searchParams.limit
 
     try {
+      // Build FTS5 prefix query so partial terms like "por" match "Portrait"
+      const ftsQuery = searchQuery.trim().split(/\s+/)
+        .map(term => `${term.replace(/["^*()\-]/g, '')}*`)
+        .filter(term => term.length > 1)
+        .join(' ')
+
       // Try FTS5 search first
       const items = db.prepare(`
         SELECT i.*,
@@ -316,11 +322,11 @@ export function registerItemsHandlers(): void {
         WHERE items_fts MATCH ?
         ORDER BY rank
         LIMIT ? OFFSET ?
-      `).all(searchQuery, searchParams.limit, offset) as Record<string, unknown>[]
+      `).all(ftsQuery, searchParams.limit, offset) as Record<string, unknown>[]
 
       const countRow = db.prepare(`
         SELECT COUNT(*) as total FROM items_fts WHERE items_fts MATCH ?
-      `).get(searchQuery) as { total: number }
+      `).get(ftsQuery) as { total: number }
 
       return {
         items: items.map((item) => ({
